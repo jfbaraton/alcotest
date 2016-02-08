@@ -88,9 +88,9 @@ var HelloWorldLayer = cc.Layer.extend({
         if( 'touches' in cc.sys.capabilities ){
             cc.eventManager.addListener(cc.EventListener.create({
                 event: cc.EventListener.TOUCH_ALL_AT_ONCE,
-                onTouchesEnded:function (touches, event) {
+                onTouchBegan:function (touches, event) {
                     // write label
-                    helloLabel.setString("pressed ended");
+                    helloLabel.setString("pressed down");
                     if (touches.length <= 0)
                         return;
                     event.getCurrentTarget().moveFinger(touches[0].getLocation());
@@ -101,12 +101,19 @@ var HelloWorldLayer = cc.Layer.extend({
                     if (touches.length <= 0)
                         return;
                     event.getCurrentTarget().moveFinger(touches[0].getLocation());
+                },
+                onTouchesEnded :function (touches, event) {
+                    // write label
+                    helloLabel.setString("pressed ended");
+                    if (touches.length <= 0)
+                        return;
+                    event.getCurrentTarget().releaseFinger(touches[0].getLocation());
                 }
             }), this);
         }else if ('mouse' in cc.sys.capabilities ){
             cc.eventManager.addListener({
                 event: cc.EventListener.MOUSE,
-                onMouseUp: function (event) {
+                onMouseDown: function (event) {
                     // write label
                     helloLabel.setString("mouse ended");
                     event.getCurrentTarget().moveFinger(event.getLocation());
@@ -115,6 +122,11 @@ var HelloWorldLayer = cc.Layer.extend({
                     // write label
                     helloLabel.setString("mouse moved");
                     event.getCurrentTarget().moveFinger(event.getLocation());
+                },
+                onMouseUp: function (event) {
+                    // write label
+                    helloLabel.setString("mouse down");
+                    event.getCurrentTarget().releaseFinger(event.getLocation());
                 }
             }, this);
         }
@@ -153,9 +165,103 @@ var HelloWorldLayer = cc.Layer.extend({
         sprite.runAction(cc.rotateTo(1, at));
     },
     moveFinger:function(position) {
-        var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
-        sprite.x = position.x;
-	    sprite.y = position.y;
+        switch(state) {
+            case STATE_WAIT_FIRST_FINGER://
+                // test if finger moved to the initial circle
+                // start count down animation
+                // goto STATE_COUNT_DOWN
+                break;
+            case STATE_COUNT_DOWN://
+                // test if finger moved OUT OF the initial circle
+                // it's too early, back to STATE_WAIT_FIRST_FINGER
+                
+                // this state normally ends by itself when the count down (+ random time) is over 
+                break;
+            case STATE_TARGET_APPEARS://
+                // test if finger moved OUT OF the Move detection trigger circle
+                // record reaction time
+                // goto STATE_USER_MOVE_STARTED
+                
+                // update cursor position anyway
+                var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
+                sprite.x = position.x;
+                sprite.y = position.y;
+                
+                break;
+            case STATE_USER_MOVE_STARTED://
+                // the actual move already started dince STATE_TARGET_APPEARS
+                // test if move ended (collision with target)
+                // record exercise time
+                
+                // if amount exercise done == maximum (series of exercises is finished)
+                // goto STATE_DISPLAY_VERDICT
+                
+                // esle (of if amount exercise done == maximum (series of exercises is finished))
+                // increment amount exercise done
+                // goto STATE_USER_MOVE_ENDED_SUCCESS
+                
+                //update cursor position anyway
+                var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
+                sprite.x = position.x;
+                sprite.y = position.y;
+                break;
+            case STATE_USER_MOVE_ENDED_SUCCESS://
+                // no cursor here (TODO : can make it disappear)
+                break;
+            case STATE_WAIT_FIRST_FINGER_DISPLAY_SCORE://
+                // test if finger moved to the initial circle
+                // start count down animation
+                // goto STATE_COUNT_DOWN
+                break;
+            case STATE_DISPLAY_VERDICT:
+                // no cursor here
+                break;
+            default:
+                // do nothing
+        }
+    },
+    releaseFinger:function(position) {
+        switch(state) {
+            case STATE_WAIT_FIRST_FINGER:
+                // no thing to do, keep waiting
+                break;
+            case STATE_COUNT_DOWN://
+                // cancel count down
+                
+                // back to STATE_WAIT_FIRST_FINGER
+                state = STATE_WAIT_FIRST_FINGER;
+                break;
+            case STATE_TARGET_APPEARS://
+                // cancel target
+                // forget start time
+                
+                // reset cursor position
+                var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
+                sprite.x = size.width / 2;
+	            sprite.y = size.height / 2;
+                break;
+            case STATE_USER_MOVE_STARTED://
+                // cancel target
+                // forget start time
+                // forget reaction time
+                
+                // reset cursor position
+                var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
+                sprite.x = size.width / 2;
+	            sprite.y = size.height / 2;
+                break;
+            case STATE_USER_MOVE_ENDED_SUCCESS:
+                // no cursor here (TODO : can make it disappear)
+                break;
+            case STATE_WAIT_FIRST_FINGER_DISPLAY_SCORE:
+                // no cursor here (TODO : can make it disappear)
+                break;
+            case STATE_DISPLAY_VERDICT:
+                // no cursor here (TODO : can make it disappear)
+                break;
+            default:
+                // do nothing
+        }
     }
 });
 
