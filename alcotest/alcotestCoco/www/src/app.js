@@ -1,5 +1,6 @@
 var TAG_SPRITE_FINGER = 1; // finger
 var TAG_SPRITE_TARGET = 2; // target
+var TAG_LABEL_TITLE = 3; // title label
 
 var STATE_WAIT_FIRST_FINGER = 10; // waiting for user to put finger on starting zone (circle in the middle of the screen)
 var STATE_COUNT_DOWN = 20;        // displaying count down before target appears
@@ -10,7 +11,7 @@ var STATE_WAIT_FIRST_FINGER_DISPLAY_SCORE = 60; // waiting for user to put finge
 var STATE_DISPLAY_VERDICT = 60; // waiting for user to put finger on starting zone (circle in the middle of the screen)
 
 var state = STATE_WAIT_FIRST_FINGER; // initial state
-
+var helloLabel;
 /* globals cc, asset */
 var HelloWorldLayer = cc.Layer.extend({
     sprite:null,
@@ -53,12 +54,12 @@ var HelloWorldLayer = cc.Layer.extend({
         // 3. add your codes below...
         // add a label shows "Hello World"
         // create and initialize a label
-        var helloLabel = new cc.LabelTTF("To start, leave your finger\n in the circle", "Arial", 38);
+        helloLabel = new cc.LabelTTF("To start, leave your finger\n in the circle", "Arial", 38);
         // position the label on the center of the screen
         helloLabel.x = size.width / 2;
         helloLabel.y = 0;
         // add the label as a child to this layer
-        this.addChild(helloLabel, 5);
+        this.addChild(helloLabel, 5, TAG_LABEL_TITLE);
 
         // add "HelloWorld" splash screen"
         //this.sprite = new cc.Sprite(asset.HelloWorld_png);
@@ -88,6 +89,8 @@ var HelloWorldLayer = cc.Layer.extend({
             cc.eventManager.addListener(cc.EventListener.create({
                 event: cc.EventListener.TOUCH_ALL_AT_ONCE,
                 onTouchesEnded:function (touches, event) {
+                    // write label
+                    helloLabel.setString("pressed ended");
                     if (touches.length <= 0)
                         return;
                     event.getCurrentTarget().moveSprite(touches[0].getLocation());
@@ -97,6 +100,8 @@ var HelloWorldLayer = cc.Layer.extend({
             cc.eventManager.addListener({
                 event: cc.EventListener.MOUSE,
                 onMouseUp: function (event) {
+                    // write label
+                    helloLabel.setString("mouse ended");
                     event.getCurrentTarget().moveSprite(event.getLocation());
                 }
             }, this);
