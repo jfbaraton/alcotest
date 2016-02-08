@@ -85,7 +85,7 @@ var HelloWorldLayer = cc.Layer.extend({
         );
         // end of 3
         
-        if( 'touches' in cc.sys.capabilities )
+        if( 'touches' in cc.sys.capabilities ){
             cc.eventManager.addListener(cc.EventListener.create({
                 event: cc.EventListener.TOUCH_ALL_AT_ONCE,
                 onTouchesEnded:function (touches, event) {
@@ -93,18 +93,31 @@ var HelloWorldLayer = cc.Layer.extend({
                     helloLabel.setString("pressed ended");
                     if (touches.length <= 0)
                         return;
-                    event.getCurrentTarget().moveSprite(touches[0].getLocation());
+                    event.getCurrentTarget().moveFinger(touches[0].getLocation());
+                },
+                onTouchesMoved :function (touches, event) {
+                    // write label
+                    helloLabel.setString("pressed moved");
+                    if (touches.length <= 0)
+                        return;
+                    event.getCurrentTarget().moveFinger(touches[0].getLocation());
                 }
             }), this);
-        else if ('mouse' in cc.sys.capabilities )
+        }else if ('mouse' in cc.sys.capabilities ){
             cc.eventManager.addListener({
                 event: cc.EventListener.MOUSE,
                 onMouseUp: function (event) {
                     // write label
                     helloLabel.setString("mouse ended");
-                    event.getCurrentTarget().moveSprite(event.getLocation());
+                    event.getCurrentTarget().moveFinger(event.getLocation());
+                },
+                onMouseMove: function (event) {
+                    // write label
+                    helloLabel.setString("mouse moved");
+                    event.getCurrentTarget().moveFinger(event.getLocation());
                 }
             }, this);
+        }
         var sprite = new cc.Sprite("asset/target2.png");
         
         var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
@@ -138,6 +151,11 @@ var HelloWorldLayer = cc.Layer.extend({
         }
 
         sprite.runAction(cc.rotateTo(1, at));
+    },
+    moveFinger:function(position) {
+        var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
+        sprite.x = position.x;
+	    sprite.y = position.y;
     }
 });
 
@@ -148,68 +166,3 @@ var HelloWorldScene = cc.Scene.extend({
         this.addChild(layer);
     }
 });
-//var TAG_SPRITE;
-var ClickAndMoveTestLayer = cc.Layer.extend({
-    ctor:function () {
-
-        if(window.sideIndexBar){
-            window.sideIndexBar.changeTest(0, 4);
-        }
-
-        this._super();
-
-        this.init();
-
-        if( 'touches' in cc.sys.capabilities )
-            cc.eventManager.addListener(cc.EventListener.create({
-                event: cc.EventListener.TOUCH_ALL_AT_ONCE,
-                onTouchesEnded:function (touches, event) {
-                    if (touches.length <= 0)
-                        return;
-                    event.getCurrentTarget().moveSprite(touches[0].getLocation());
-                }
-            }), this);
-        else if ('mouse' in cc.sys.capabilities )
-            cc.eventManager.addListener({
-                event: cc.EventListener.MOUSE,
-                onMouseUp: function (event) {
-                    event.getCurrentTarget().moveSprite(event.getLocation());
-                }
-            }, this);
-
-        var sprite = new cc.Sprite("CloseNormal.png");
-
-        var layer = new cc.LayerColor(cc.color(255, 255, 0, 100));
-        this.addChild(layer, -1);
-
-        this.addChild(sprite, 0, TAG_SPRITE);
-        sprite.x = 20;
-	    sprite.y = 150;
-
-        sprite.runAction(cc.jumpTo(4, cc.p(300, 48), 100, 4));
-
-        var fadeIn = cc.fadeIn(1);
-        var fadeOut = cc.fadeOut(1);
-        var forever = cc.sequence(fadeIn, fadeOut).repeatForever();
-        layer.runAction(forever);
-    },
-
-    moveSprite:function(position) {
-        var sprite = this.getChildByTag(TAG_SPRITE);
-        sprite.stopAllActions();
-        sprite.runAction(cc.moveTo(1, position));
-        var o = position.x - sprite.x;
-        var a = position.y - sprite.y;
-        var at = Math.atan(o / a) * 57.29577951;  // radians to degrees
-
-        if (a < 0) {
-            if (o < 0)
-                at = 180 + Math.abs(at);
-            else
-                at = 180 - Math.abs(at);
-        }
-
-        sprite.runAction(cc.rotateTo(1, at));
-    }
-});
-
