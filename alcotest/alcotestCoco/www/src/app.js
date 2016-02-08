@@ -6,7 +6,8 @@ var STATE_COUNT_DOWN = 20;        // displaying count down before target appears
 var STATE_TARGET_APPEARS = 30;    // target apears, waiting for users move to start
 var STATE_USER_MOVE_STARTED = 40; // user started to move (move crossed triggering circle)
 var STATE_USER_MOVE_ENDED_SUCCESS = 50; // user move reached the target, application now does the math and decides betwen another testrun or a final score
-var STATE_WAIT_FIRST_FINGER_DISPLAY_SCORE = 60; // waiting for user to put finger on starting zone (circle in the middle of the screen)
+var STATE_WAIT_FIRST_FINGER_DISPLAY_SCORE = 60; // waiting for user to put finger on starting zone + displaying score from previous attempt
+var STATE_DISPLAY_VERDICT = 60; // waiting for user to put finger on starting zone (circle in the middle of the screen)
 
 var state = STATE_WAIT_FIRST_FINGER; // initial state
 
@@ -23,33 +24,6 @@ var HelloWorldLayer = cc.Layer.extend({
         this._super();
 
         this.init();
-        
-        if( 'touches' in cc.sys.capabilities )
-            cc.eventManager.addListener(cc.EventListener.create({
-                event: cc.EventListener.TOUCH_ALL_AT_ONCE,
-                onTouchesEnded:function (touches, event) {
-                    if (touches.length <= 0)
-                        return;
-                    event.getCurrentTarget().moveSprite(touches[0].getLocation());
-                }
-            }), this);
-        else if ('mouse' in cc.sys.capabilities )
-            cc.eventManager.addListener({
-                event: cc.EventListener.MOUSE,
-                onMouseUp: function (event) {
-                    event.getCurrentTarget().moveSprite(event.getLocation());
-                }
-            }, this);
-        var sprite = new cc.Sprite("asset/target2.png");
-        
-        var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
-        this.addChild(layer, -1);
-        
-        this.addChild(sprite, 0, TAG_SPRITE_FINGER);
-        sprite.x = 20;
-	    sprite.y = 150;
-
-        sprite.runAction(cc.jumpTo(4, cc.p(300, 48), 100, 4));
         /////////////////////////////
         // 2. add a menu item with "X" image, which is clicked to quit the program
         //    you may modify it.
@@ -79,7 +53,7 @@ var HelloWorldLayer = cc.Layer.extend({
         // 3. add your codes below...
         // add a label shows "Hello World"
         // create and initialize a label
-       /* var helloLabel = new cc.LabelTTF("Hello World", "Arial", 38);
+        var helloLabel = new cc.LabelTTF("To start, leave your finger\n in the circle", "Arial", 38);
         // position the label on the center of the screen
         helloLabel.x = size.width / 2;
         helloLabel.y = 0;
@@ -87,28 +61,55 @@ var HelloWorldLayer = cc.Layer.extend({
         this.addChild(helloLabel, 5);
 
         // add "HelloWorld" splash screen"
-        this.sprite = new cc.Sprite(asset.HelloWorld_png);
-        this.sprite.attr({
-            x: size.width / 2,
-            y: size.height / 2,
-            scale: 0.5,
-            rotation: 180
-        });
-        this.addChild(this.sprite, 0);
+        //this.sprite = new cc.Sprite(asset.HelloWorld_png);
+        //this.sprite.attr({
+        //    x: size.width / 2,
+        //    y: size.height / 2,
+        //    scale: 0.5,
+        //    rotation: 180
+        //});
+        //this.addChild(this.sprite, 0);
 
-        this.sprite.runAction(
-            cc.sequence(
-                cc.rotateTo(2, 0),
-                cc.scaleTo(2, 1, 1)
-            )
-        );
+        //this.sprite.runAction(
+        //    cc.sequence(
+        //        cc.rotateTo(2, 0),
+        //        cc.scaleTo(2, 1, 1)
+        //    )
+        //);
         helloLabel.runAction(
             cc.spawn(
                 cc.moveBy(2.5, cc.p(0, size.height - 40)),
                 cc.tintTo(2.5,255,125,0)
             )
-        );*/
+        );
         // end of 3
+        
+        if( 'touches' in cc.sys.capabilities )
+            cc.eventManager.addListener(cc.EventListener.create({
+                event: cc.EventListener.TOUCH_ALL_AT_ONCE,
+                onTouchesEnded:function (touches, event) {
+                    if (touches.length <= 0)
+                        return;
+                    event.getCurrentTarget().moveSprite(touches[0].getLocation());
+                }
+            }), this);
+        else if ('mouse' in cc.sys.capabilities )
+            cc.eventManager.addListener({
+                event: cc.EventListener.MOUSE,
+                onMouseUp: function (event) {
+                    event.getCurrentTarget().moveSprite(event.getLocation());
+                }
+            }, this);
+        var sprite = new cc.Sprite("asset/target2.png");
+        
+        var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
+        this.addChild(layer, -1);
+        
+        this.addChild(sprite, 0, TAG_SPRITE_FINGER);
+        sprite.x = size.width / 2;
+	    sprite.y = size.height / 2;
+
+        //sprite.runAction(cc.jumpTo(4, cc.p(300, 48), 100, 4));
         
         var fadeIn = cc.fadeIn(1);
         var fadeOut = cc.fadeOut(1);
