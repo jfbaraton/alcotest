@@ -1,4 +1,15 @@
-var TAG_SPRITE = 1;
+var TAG_SPRITE_FINGER = 1; // finger
+var TAG_SPRITE_TARGET = 2; // target
+
+var STATE_WAIT_FIRST_FINGER = 10; // waiting for user to put finger on starting zone (circle in the middle of the screen)
+var STATE_COUNT_DOWN = 20;        // displaying count down before target appears
+var STATE_TARGET_APPEARS = 30;    // target apears, waiting for users move to start
+var STATE_USER_MOVE_STARTED = 40; // user started to move (move crossed triggering circle)
+var STATE_USER_MOVE_ENDED_SUCCESS = 50; // user move reached the target, application now does the math and decides betwen another testrun or a final score
+var STATE_WAIT_FIRST_FINGER_DISPLAY_SCORE = 60; // waiting for user to put finger on starting zone (circle in the middle of the screen)
+
+var state = STATE_WAIT_FIRST_FINGER; // initial state
+
 /* globals cc, asset */
 var HelloWorldLayer = cc.Layer.extend({
     sprite:null,
@@ -29,12 +40,12 @@ var HelloWorldLayer = cc.Layer.extend({
                     event.getCurrentTarget().moveSprite(event.getLocation());
                 }
             }, this);
-        var sprite = new cc.Sprite("asset/CloseNormal.png");
+        var sprite = new cc.Sprite("asset/target2.png");
         
-        var layer = new cc.LayerColor(cc.color(255, 255, 0, 100));
+        var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
         this.addChild(layer, -1);
         
-        this.addChild(sprite, 0, TAG_SPRITE);
+        this.addChild(sprite, 0, TAG_SPRITE_FINGER);
         sprite.x = 20;
 	    sprite.y = 150;
 
@@ -106,7 +117,7 @@ var HelloWorldLayer = cc.Layer.extend({
         return true;
     },
     moveSprite:function(position) {
-        var sprite = this.getChildByTag(TAG_SPRITE);
+        var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
         sprite.stopAllActions();
         sprite.runAction(cc.moveTo(1, position));
         var o = position.x - sprite.x;
