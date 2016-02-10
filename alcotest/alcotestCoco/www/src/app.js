@@ -255,6 +255,9 @@ var HelloWorldLayer = cc.Layer.extend({
             case STATE_USER_MOVE_STARTED://
                 var target = this.getChildByTag(TAG_SPRITE_TARGET);
                 var squareDistanceToTarget = Math.pow(position.x-target.x,2)+Math.pow(position.y-target.y,2);
+                
+                // compute distance between finger position and line (shortest path) as an accuracy metric
+                //var distanceToLine = Math.pow(position.x-size.width / 2,2)+Math.pow(position.y-size.height / 2,2);
                 // the actual move already started since STATE_TARGET_APPEARS
                 // test if move ended (collision with target)
                 
