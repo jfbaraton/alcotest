@@ -12,6 +12,15 @@ var STATE_DISPLAY_VERDICT = 60; // waiting for user to put finger on starting zo
 
 var state = STATE_WAIT_FIRST_FINGER; // initial state
 var helloLabel;
+var countDown = 3;
+
+var exerciseStartDate; // when target appeared
+var exerciseReactionDate; // when user started to move
+var exerciseSuccessDate;  // when user reached target
+
+var achievedExercises = 0; // amount of successfully achieved exercises
+var EXERCISE_LIMIT = 3; // amount of exercise to accomplish to validate the test
+
 /* globals cc, asset */
 var HelloWorldLayer = cc.Layer.extend({
     sprite:null,
@@ -37,6 +46,9 @@ var HelloWorldLayer = cc.Layer.extend({
             asset.CloseSelected_png,
             function () {
                 cc.log("Menu is clicked!");
+                state =STATE_WAIT_FIRST_FINGER;
+                
+                helloLabel.setString("Leave your finger\n in the circle");
             }, this);
         closeItem.attr({
             x: size.width - 20,
@@ -88,23 +100,24 @@ var HelloWorldLayer = cc.Layer.extend({
         if( 'touches' in cc.sys.capabilities ){
             cc.eventManager.addListener(cc.EventListener.create({
                 event: cc.EventListener.TOUCH_ALL_AT_ONCE,
-                onTouchBegan:function (touches, event) {
+                onTouchesBegan:function (touches, event) {
                     // write label
-                    helloLabel.setString("pressed down");
+                    //helloLabel.setString("pressed down");
                     if (touches.length <= 0)
                         return;
                     event.getCurrentTarget().moveFinger(touches[0].getLocation());
                 },
                 onTouchesMoved :function (touches, event) {
                     // write label
-                    helloLabel.setString("pressed moved");
+                    //var squareDistance = Math.pow(touches[0].getLocation().x-size.width / 2,2)+Math.pow(touches[0].getLocation().y-size.height / 2,2);
+                    //helloLabel.setString("pressed moved");
                     if (touches.length <= 0)
                         return;
                     event.getCurrentTarget().moveFinger(touches[0].getLocation());
                 },
                 onTouchesEnded :function (touches, event) {
                     // write label
-                    helloLabel.setString("pressed ended");
+                    //helloLabel.setString("pressed ended");
                     if (touches.length <= 0)
                         return;
                     event.getCurrentTarget().releaseFinger(touches[0].getLocation());
@@ -115,21 +128,23 @@ var HelloWorldLayer = cc.Layer.extend({
                 event: cc.EventListener.MOUSE,
                 onMouseDown: function (event) {
                     // write label
-                    helloLabel.setString("mouse ended");
+                    //helloLabel.setString("mouse ended");
                     event.getCurrentTarget().moveFinger(event.getLocation());
                 },
                 onMouseMove: function (event) {
                     // write label
-                    helloLabel.setString("mouse moved");
+                    //helloLabel.setString("mouse moved");
                     event.getCurrentTarget().moveFinger(event.getLocation());
                 },
                 onMouseUp: function (event) {
                     // write label
-                    helloLabel.setString("mouse down");
+                    //helloLabel.setString("mouse down");
                     event.getCurrentTarget().releaseFinger(event.getLocation());
                 }
             }, this);
         }
+        
+        // finger tracker circle
         var sprite = new cc.Sprite("asset/target2.png");
         
         var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
@@ -138,6 +153,18 @@ var HelloWorldLayer = cc.Layer.extend({
         this.addChild(sprite, 0, TAG_SPRITE_FINGER);
         sprite.x = size.width / 2;
 	    sprite.y = size.height / 2;
+        
+        // target
+        var target = new cc.Sprite("asset/target3.png");
+        
+        var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
+        this.addChild(layer, -1);
+        
+        this.addChild(target, 0, TAG_SPRITE_TARGET);
+        target.x = 40;
+	    target.y = size.height-100;
+        
+        target.runAction(cc.hide());
 
         //sprite.runAction(cc.jumpTo(4, cc.p(300, 48), 100, 4));
         
@@ -145,6 +172,13 @@ var HelloWorldLayer = cc.Layer.extend({
         var fadeOut = cc.fadeOut(1);
         var forever = cc.sequence(fadeIn, fadeOut).repeatForever();
         layer.runAction(forever);
+        
+        
+        // timer
+        var oneSecUpdateRate = 1.0;
+        this.schedule(this.updateCountDown, oneSecUpdateRate);
+        
+        // end of init
         return true;
     },
     moveSprite:function(position) {
@@ -165,45 +199,85 @@ var HelloWorldLayer = cc.Layer.extend({
         sprite.runAction(cc.rotateTo(1, at));
     },
     moveFinger:function(position) {
+        
+        var size = cc.winSize;
+                
+        var squareDistanceToOrigin = Math.pow(position.x-size.width / 2,2)+Math.pow(position.y-size.height / 2,2);
+        var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
+        //sprite.x = position.x;
+        //sprite.y = position.y;
+        //var label = this.getChildByTag(TAG_LABEL_TITLE);
+        //helloLabel.setString("squareDistance "+squareDistanceToOrigin);
         switch(state) {
             case STATE_WAIT_FIRST_FINGER://
                 // test if finger moved to the initial circle
-                // start count down animation
-                // goto STATE_COUNT_DOWN
+                if( squareDistanceToOrigin< 15*15){
+                    // hide target
+                    var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                    target.runAction(cc.hide());
+                    
+                    // start count down animation
+                    helloLabel.setString("COUNT DOWN");
+                    // goto STATE_COUNT_DOWN
+                    state = STATE_COUNT_DOWN;
+                }else{
+                    //helloLabel.setString("squareDistance "+squareDistanceToOrigin/1);
+                }
                 break;
             case STATE_COUNT_DOWN://
                 // test if finger moved OUT OF the initial circle
-                // it's too early, back to STATE_WAIT_FIRST_FINGER
+                if( squareDistanceToOrigin> 15*15){
+                    // it's too early, back to STATE_WAIT_FIRST_FINGER
+                    helloLabel.setString("BACK TO START");
+                    state = STATE_WAIT_FIRST_FINGER;
+                }
                 
                 // this state normally ends by itself when the count down (+ random time) is over 
                 break;
             case STATE_TARGET_APPEARS://
                 // test if finger moved OUT OF the Move detection trigger circle
-                // record reaction time
-                // goto STATE_USER_MOVE_STARTED
+                if( squareDistanceToOrigin> 15*15){
+                    // it's too early, back to STATE_WAIT_FIRST_FINGER
+                    
+                    // record reaction time
+                    exerciseReactionDate = new Date().getTime();
+                    var reactionTime = Math.round((exerciseReactionDate-exerciseStartDate)/10)/100.0;
+                    helloLabel.setString("REACTION TIME \n"+reactionTime);
+                    // goto STATE_USER_MOVE_STARTED
+                    state = STATE_USER_MOVE_STARTED;
+                }
                 
                 // update cursor position anyway
-                var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
                 sprite.x = position.x;
                 sprite.y = position.y;
                 
                 break;
             case STATE_USER_MOVE_STARTED://
-                // the actual move already started dince STATE_TARGET_APPEARS
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                var squareDistanceToTarget = Math.pow(position.x-target.x,2)+Math.pow(position.y-target.y,2);
+                // the actual move already started since STATE_TARGET_APPEARS
                 // test if move ended (collision with target)
-                // record exercise time
                 
-                // if amount exercise done == maximum (series of exercises is finished)
-                // goto STATE_DISPLAY_VERDICT
-                
-                // esle (of if amount exercise done == maximum (series of exercises is finished))
-                // increment amount exercise done
-                // goto STATE_USER_MOVE_ENDED_SUCCESS
-                
-                //update cursor position anyway
-                var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
-                sprite.x = position.x;
-                sprite.y = position.y;
+                if(squareDistanceToTarget <= 15*15){
+                    
+                    helloLabel.setString("BRAVO !");
+                    // record exercise time
+                    exerciseSuccessDate = new Date().getTime();
+
+                    // if amount exercise done == maximum (series of exercises is finished)
+                    // goto STATE_DISPLAY_VERDICT
+                    state = STATE_USER_MOVE_ENDED_SUCCESS;
+                    // esle (of if amount exercise done == maximum (series of exercises is finished))
+                    // increment amount exercise done
+                    // goto STATE_USER_MOVE_ENDED_SUCCESS
+                    
+                    sprite.x = size.width / 2;
+	               sprite.y = size.height / 2;
+                }else{
+                    //update cursor position
+                    sprite.x = position.x;
+                    sprite.y = position.y;
+                }
                 break;
             case STATE_USER_MOVE_ENDED_SUCCESS://
                 // no cursor here (TODO : can make it disappear)
@@ -219,8 +293,10 @@ var HelloWorldLayer = cc.Layer.extend({
             default:
                 // do nothing
         }
+
     },
     releaseFinger:function(position) {
+        var size = cc.winSize;
         switch(state) {
             case STATE_WAIT_FIRST_FINGER:
                 // no thing to do, keep waiting
@@ -229,19 +305,29 @@ var HelloWorldLayer = cc.Layer.extend({
                 // cancel count down
                 
                 // back to STATE_WAIT_FIRST_FINGER
+                helloLabel.setString("Don't release your\nfinger, try again");
                 state = STATE_WAIT_FIRST_FINGER;
                 break;
             case STATE_TARGET_APPEARS://
                 // cancel target
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                target.runAction(cc.hide()); 
+                
                 // forget start time
                 
                 // reset cursor position
                 var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
                 sprite.x = size.width / 2;
 	            sprite.y = size.height / 2;
+                
+                // back to STATE_WAIT_FIRST_FINGER
+                helloLabel.setString("Don't release your\nfinger, try again");
+                state = STATE_WAIT_FIRST_FINGER;
                 break;
             case STATE_USER_MOVE_STARTED://
                 // cancel target
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                target.runAction(cc.hide()); 
                 // forget start time
                 // forget reaction time
                 
@@ -249,18 +335,50 @@ var HelloWorldLayer = cc.Layer.extend({
                 var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
                 sprite.x = size.width / 2;
 	            sprite.y = size.height / 2;
+                
+                // back to STATE_WAIT_FIRST_FINGER
+                helloLabel.setString("Don't release your\nfinger, try again");
+                state = STATE_WAIT_FIRST_FINGER;
                 break;
             case STATE_USER_MOVE_ENDED_SUCCESS:
                 // no cursor here (TODO : can make it disappear)
                 break;
             case STATE_WAIT_FIRST_FINGER_DISPLAY_SCORE:
                 // no cursor here (TODO : can make it disappear)
+                
+                // hide target
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                target.runAction(cc.hide());
                 break;
             case STATE_DISPLAY_VERDICT:
                 // no cursor here (TODO : can make it disappear)
+                
+                // hide target
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                target.runAction(cc.hide());
                 break;
             default:
                 // do nothing
+        }
+    },
+    updateCountDown : function (){// start timing exercise
+        
+        if(state == STATE_COUNT_DOWN){
+                helloLabel.setString("TARGET COMING 3...2...1...");
+                countDown --;
+                if(countDown <= 0){ // when count down is over
+                    countDown = 3; // reset countdown for next time
+                    
+                    // start timing exercise
+                    exerciseStartDate = new Date().getTime();
+                    
+                    var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                    target.runAction(cc.show()); // display target
+                    state = STATE_TARGET_APPEARS; // go to state where target is visible and we wait for user to move toward it
+                    helloLabel.setString("Slide to the taget!");
+                }
+        }else{
+            countDown = 3;
         }
     }
 });
