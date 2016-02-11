@@ -1,6 +1,10 @@
 var TAG_SPRITE_FINGER = 1; // finger
 var TAG_SPRITE_TARGET = 2; // target
 var TAG_LABEL_TITLE = 3; // title label
+var TAG_COLOR_LAYER = 4; // color layer
+
+var STATE_SPLASH_SCREEN = 1; // splash screen with explainations
+var STATE_USER_DESCRIPTION = 3; // screen asking user's description
 
 var STATE_WAIT_FIRST_FINGER = 10; // waiting for user to put finger on starting zone (circle in the middle of the screen)
 var STATE_COUNT_DOWN = 20;        // displaying count down before target appears
@@ -18,9 +22,14 @@ var exerciseStartDate; // when target appeared
 var exerciseReactionDate; // when user started to move
 var exerciseSuccessDate;  // when user reached target
 
-var achievedExercises = 0; // amount of successfully achieved exercises
+var achievedExercises = 0; // amount of successfully achieved exercisesvar 
+var unAchievedExercises = 0; // amount of unachieved exercises since last success
 var EXERCISE_LIMIT = 3; // amount of exercise to accomplish to validate the test
 
+var targetPosition = 4; // random target position 1=top left, 2 = top right, 3 = bottom left, 4 = bottom right
+
+var sessionID = "appSession";
+var serieID = "appSerie";
 /* globals cc, asset */
 var HelloWorldLayer = cc.Layer.extend({
     sprite:null,
@@ -40,13 +49,16 @@ var HelloWorldLayer = cc.Layer.extend({
         // ask the window size
         var size = cc.winSize;
 
-        // add a "close" icon to exit the progassets. it's an autorelease object
+        // add a "close" icon to go to next exercise. it's an autorelease object
         var closeItem = new cc.MenuItemImage(
             asset.CloseNormal_png,
             asset.CloseSelected_png,
             function () {
-                cc.log("Menu is clicked!");
+                cc.log("Next exercise is clicked!");
                 state =STATE_WAIT_FIRST_FINGER;
+                
+                var colorLayer = this.getChildByTag(TAG_COLOR_LAYER);
+                colorLayer.init(cc.color(130, 130, 0, 100));
                 
                 helloLabel.setString("Leave your finger\n in the circle");
             }, this);
@@ -61,6 +73,31 @@ var HelloWorldLayer = cc.Layer.extend({
         menu.x = 0;
         menu.y = 0;
         this.addChild(menu, 1);
+        
+        // add a "next user" icon to go to next user. it's an autorelease object
+        var nextUserItem = new cc.MenuItemImage(
+            asset.Group30_png,
+            asset.Group30Selected_png,
+            function () {
+                cc.log("Next User is clicked!");
+                state =STATE_WAIT_FIRST_FINGER;
+                
+                var colorLayer = this.getChildByTag(TAG_COLOR_LAYER);
+                colorLayer.init(cc.color(130, 130, 0, 100));
+                
+                helloLabel.setString("Leave your finger\n in the circle");
+            }, this);
+        nextUserItem.attr({
+            x: size.width/2,
+            y: 20,
+            anchorX: 0.5,
+            anchorY: 0.5
+        });
+
+        var nextUserMenu = new cc.Menu(nextUserItem);
+        nextUserMenu.x = 0;
+        nextUserMenu.y = 0;
+        this.addChild(nextUserMenu, 1);
 
         /////////////////////////////
         // 3. add your codes below...
@@ -145,24 +182,31 @@ var HelloWorldLayer = cc.Layer.extend({
         }
         
         // finger tracker circle
-        var sprite = new cc.Sprite("asset/target2.png");
+        var sprite = new cc.Sprite(asset.Cursor_png);
         
         var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
-        this.addChild(layer, -1);
+        this.addChild(layer, -1,TAG_COLOR_LAYER);
         
         this.addChild(sprite, 0, TAG_SPRITE_FINGER);
         sprite.x = size.width / 2;
-	    sprite.y = size.height / 2;
+        sprite.y = size.height / 2;
         
         // target
-        var target = new cc.Sprite("asset/target3.png");
+        var target = new cc.Sprite(asset.Target_png);
+    
         
-        var layer = new cc.LayerColor(cc.color(130, 130, 0, 100));
-        this.addChild(layer, -1);
-        
+        targetPosition = Math.floor((Math.random() * 4) + 1); // random target position 1=top left, 2 = top right, 3 = bottom left, 4 = bottom right
         this.addChild(target, 0, TAG_SPRITE_TARGET);
-        target.x = 40;
-	    target.y = size.height-100;
+        if(targetPosition %2 ===0){
+            target.x = 40; // left
+        }else{
+            target.x = size.width-40; // right
+        }
+        if(targetPosition >2){
+            target.y = size.height-100; // top
+        }else{
+            target.y = 100; // bottom
+        }
         
         target.runAction(cc.hide());
 
@@ -229,6 +273,7 @@ var HelloWorldLayer = cc.Layer.extend({
                 if( squareDistanceToOrigin> 15*15){
                     // it's too early, back to STATE_WAIT_FIRST_FINGER
                     helloLabel.setString("BACK TO START");
+                    unAchievedExercises ++;
                     state = STATE_WAIT_FIRST_FINGER;
                 }
                 
@@ -253,8 +298,8 @@ var HelloWorldLayer = cc.Layer.extend({
                 
                 break;
             case STATE_USER_MOVE_STARTED://
-                var target = this.getChildByTag(TAG_SPRITE_TARGET);
-                var squareDistanceToTarget = Math.pow(position.x-target.x,2)+Math.pow(position.y-target.y,2);
+                var targetSprite = this.getChildByTag(TAG_SPRITE_TARGET);
+                var squareDistanceToTarget = Math.pow(position.x-targetSprite.x,2)+Math.pow(position.y-targetSprite.y,2);
                 
                 // compute distance between finger position and line (shortest path) as an accuracy metric
                 //var distanceToLine = Math.pow(position.x-size.width / 2,2)+Math.pow(position.y-size.height / 2,2);
@@ -266,16 +311,43 @@ var HelloWorldLayer = cc.Layer.extend({
                     helloLabel.setString("BRAVO !");
                     // record exercise time
                     exerciseSuccessDate = new Date().getTime();
-
-                    // if amount exercise done == maximum (series of exercises is finished)
-                    // goto STATE_DISPLAY_VERDICT
-                    state = STATE_USER_MOVE_ENDED_SUCCESS;
-                    // esle (of if amount exercise done == maximum (series of exercises is finished))
+                    var reactionTime = Math.round((exerciseReactionDate-exerciseStartDate)/10)/100.0;
+                    var sucessTime = Math.round((exerciseSuccessDate-exerciseStartDate)/10)/100.0;
+                    
+                    
                     // increment amount exercise done
-                    // goto STATE_USER_MOVE_ENDED_SUCCESS
+                    achievedExercises ++;
+                    
+                    if(achievedExercises >= 3){
+                        // if amount exercise done == maximum (series of exercises is finished)
+                        
+                        // send result
+                        
+                        // change background according to verdict
+                        
+                        var colorLayer = this.getChildByTag(TAG_COLOR_LAYER);
+                        colorLayer.init(cc.color(0, 130, 130, 100));
+                        
+                        // goto STATE_DISPLAY_VERDICT
+                        state = STATE_DISPLAY_VERDICT;
+                        
+                        helloLabel.setString("FINI !\n"+reactionTime+"s\n"+sucessTime+"s\n");
+                    }else{
+                        // esle (of if amount exercise done == maximum (series of exercises is finished))
+                        
+                        // send result
+                        
+                        
+                        achievedExercises = 0;
+                        // goto STATE_USER_MOVE_ENDED_SUCCESS
+                        state = STATE_USER_MOVE_ENDED_SUCCESS;
+                        helloLabel.setString("BRAVO !\n"+reactionTime+"s\n"+sucessTime+"s\n");
+                    }
+                    
+                    unAchievedExercises = 0;
                     
                     sprite.x = size.width / 2;
-	               sprite.y = size.height / 2;
+                    sprite.y = size.height / 2;
                 }else{
                     //update cursor position
                     sprite.x = position.x;
@@ -307,8 +379,10 @@ var HelloWorldLayer = cc.Layer.extend({
             case STATE_COUNT_DOWN://
                 // cancel count down
                 
-                // back to STATE_WAIT_FIRST_FINGER
                 helloLabel.setString("Don't release your\nfinger, try again");
+                unAchievedExercises++;
+                // back to STATE_WAIT_FIRST_FINGER
+                
                 state = STATE_WAIT_FIRST_FINGER;
                 break;
             case STATE_TARGET_APPEARS://
@@ -321,26 +395,28 @@ var HelloWorldLayer = cc.Layer.extend({
                 // reset cursor position
                 var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
                 sprite.x = size.width / 2;
-	            sprite.y = size.height / 2;
+                sprite.y = size.height / 2;
                 
                 // back to STATE_WAIT_FIRST_FINGER
                 helloLabel.setString("Don't release your\nfinger, try again");
+                unAchievedExercises++;
                 state = STATE_WAIT_FIRST_FINGER;
                 break;
             case STATE_USER_MOVE_STARTED://
                 // cancel target
-                var target = this.getChildByTag(TAG_SPRITE_TARGET);
-                target.runAction(cc.hide()); 
+                var targetSprite = this.getChildByTag(TAG_SPRITE_TARGET);
+                targetSprite.runAction(cc.hide()); 
                 // forget start time
                 // forget reaction time
                 
                 // reset cursor position
-                var sprite = this.getChildByTag(TAG_SPRITE_FINGER);
-                sprite.x = size.width / 2;
-	            sprite.y = size.height / 2;
+                var fingerSprite = this.getChildByTag(TAG_SPRITE_FINGER);
+                fingerSprite.x = size.width / 2;
+                fingerSprite.y = size.height / 2;
                 
                 // back to STATE_WAIT_FIRST_FINGER
                 helloLabel.setString("Don't release your\nfinger, try again");
+                unAchievedExercises++;
                 state = STATE_WAIT_FIRST_FINGER;
                 break;
             case STATE_USER_MOVE_ENDED_SUCCESS:
@@ -350,15 +426,15 @@ var HelloWorldLayer = cc.Layer.extend({
                 // no cursor here (TODO : can make it disappear)
                 
                 // hide target
-                var target = this.getChildByTag(TAG_SPRITE_TARGET);
-                target.runAction(cc.hide());
+                var targetSpriteToHide = this.getChildByTag(TAG_SPRITE_TARGET);
+                targetSpriteToHide.runAction(cc.hide());
                 break;
             case STATE_DISPLAY_VERDICT:
                 // no cursor here (TODO : can make it disappear)
                 
                 // hide target
-                var target = this.getChildByTag(TAG_SPRITE_TARGET);
-                target.runAction(cc.hide());
+                var toHideTargetSprite = this.getChildByTag(TAG_SPRITE_TARGET);
+                toHideTargetSprite.runAction(cc.hide());
                 break;
             default:
                 // do nothing
@@ -367,19 +443,32 @@ var HelloWorldLayer = cc.Layer.extend({
     updateCountDown : function (){// start timing exercise
         
         if(state == STATE_COUNT_DOWN){
-                helloLabel.setString("TARGET COMING 3...2...1...");
-                countDown --;
-                if(countDown <= 0){ // when count down is over
-                    countDown = 3; // reset countdown for next time
-                    
-                    // start timing exercise
-                    exerciseStartDate = new Date().getTime();
-                    
-                    var target = this.getChildByTag(TAG_SPRITE_TARGET);
-                    target.runAction(cc.show()); // display target
-                    state = STATE_TARGET_APPEARS; // go to state where target is visible and we wait for user to move toward it
-                    helloLabel.setString("Slide to the taget!");
+            var size = cc.winSize;
+            helloLabel.setString("TARGET COMING 3...2...1...");
+            countDown --;
+            if(countDown <= 0){ // when count down is over
+                countDown = 3; // reset countdown for next time
+
+                // start timing exercise
+                exerciseStartDate = new Date().getTime();
+
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                targetPosition = Math.floor((Math.random() * 4) + 1); // random target position 1=top left, 2 = top right, 3 = bottom left, 4 = bottom right
+                if(targetPosition %2 ===0){
+                    target.x = 40; // left
+                }else{
+                    target.x = size.width-40; // right
                 }
+                if(targetPosition >2){
+                   target.y = size.height-100; // top
+                }else{
+                   target.y = 100; // bottom
+                }
+
+                target.runAction(cc.show()); // display target
+                state = STATE_TARGET_APPEARS; // go to state where target is visible and we wait for user to move toward it
+                helloLabel.setString("Slide to the taget!");
+            }
         }else{
             countDown = 3;
         }
