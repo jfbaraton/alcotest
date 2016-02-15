@@ -5,7 +5,7 @@
       "projectTypeName": "com.intel.xdk.projecttype.jsapp",
       "src": "jsapp/template-cocos2d-3x-portrait/sample.zip",
       "projectGuid": "4c8c7483-fdf6-4d4b-9e7a-2b44f325a638",
-      "lastModifiedDate": 1454921555696,
+      "lastModifiedDate": 1455208567142,
       "creationDate": 1440314911088
     },
     "sourceDirectory": "www",
@@ -83,6 +83,26 @@
         "name": "Splashscreen",
         "description": "Cordova Splashscreen Plugin",
         "checksum": "495c8f4e"
+      },
+      {
+        "id": "cordova-plugin-whitelist",
+        "name": "Whitelist",
+        "version": "1.2.1",
+        "originType": "cordova.io",
+        "origin": "cordova-plugin-whitelist",
+        "gitref": "",
+        "paramvals": {},
+        "sourceLocation": "plugins/cordova-plugin-whitelist",
+        "selectedState": "Included",
+        "checksum": "c2b7660b",
+        "dependsOn": [],
+        "topLevel": true,
+        "cordovaVersion": ">=3.0.0",
+        "permissions": {},
+        "description": "Cordova Network Whitelist Plugin",
+        "data": {},
+        "dependedBy": [],
+        "custom": "true"
       }
     ],
     "buildConfigurations": {
@@ -143,7 +163,7 @@
         },
         "icons_": [],
         "splashes_": [],
-        "addlPermissions_": "",
+        "addlPermissions_": "internet",
         "excludedLibraries_": "",
         "cordovaCLIVersion_": "5.1.1",
         "crosswalkVersion_": "14",

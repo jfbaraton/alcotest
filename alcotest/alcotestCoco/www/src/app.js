@@ -27,9 +27,10 @@ var unAchievedExercises = 0; // amount of unachieved exercises since last succes
 var EXERCISE_LIMIT = 3; // amount of exercise to accomplish to validate the test
 
 var targetPosition = 4; // random target position 1=top left, 2 = top right, 3 = bottom left, 4 = bottom right
-
-var sessionID = "appSession";
-var serieID = "appSerie";
+var JFbuffer = 0;
+var now = new Date();
+var sessionID = "appSession"+Sha1.hash(now.toISOString());
+var serieID = "appSerie"+Sha1.hash(now.toISOString());
 /* globals cc, asset */
 var HelloWorldLayer = cc.Layer.extend({
     sprite:null,
@@ -80,6 +81,12 @@ var HelloWorldLayer = cc.Layer.extend({
             asset.Group30Selected_png,
             function () {
                 cc.log("Next User is clicked!");
+                now = new Date();
+                serieID = "appSerie"+Sha1.hash(now.toISOString());
+                sessionID = "appSession"+Sha1.hash(now.toISOString());
+                
+                achievedExercises = 0;
+                
                 state =STATE_WAIT_FIRST_FINGER;
                 
                 var colorLayer = this.getChildByTag(TAG_COLOR_LAYER);
@@ -271,8 +278,9 @@ var HelloWorldLayer = cc.Layer.extend({
             case STATE_COUNT_DOWN://
                 // test if finger moved OUT OF the initial circle
                 if( squareDistanceToOrigin> 15*15){
+                    
                     // it's too early, back to STATE_WAIT_FIRST_FINGER
-                    helloLabel.setString("BACK TO START");
+                    //helloLabel.setString("BACK TO START");
                     unAchievedExercises ++;
                     state = STATE_WAIT_FIRST_FINGER;
                 }
@@ -285,8 +293,8 @@ var HelloWorldLayer = cc.Layer.extend({
                     // it's too early, back to STATE_WAIT_FIRST_FINGER
                     
                     // record reaction time
-                    exerciseReactionDate = new Date().getTime();
-                    var reactionTime = Math.round((exerciseReactionDate-exerciseStartDate)/10)/100.0;
+                    exerciseReactionDate = new Date();
+                    var reactionTime = Math.round((exerciseReactionDate.getTime()-exerciseStartDate.getTime())/10)/100.0;
                     helloLabel.setString("REACTION TIME \n"+reactionTime);
                     // goto STATE_USER_MOVE_STARTED
                     state = STATE_USER_MOVE_STARTED;
@@ -310,10 +318,25 @@ var HelloWorldLayer = cc.Layer.extend({
                     
                     helloLabel.setString("BRAVO !");
                     // record exercise time
-                    exerciseSuccessDate = new Date().getTime();
-                    var reactionTime = Math.round((exerciseReactionDate-exerciseStartDate)/10)/100.0;
-                    var sucessTime = Math.round((exerciseSuccessDate-exerciseStartDate)/10)/100.0;
+                    exerciseSuccessDate = new Date();
+                    var reactionSpeed = Math.round((exerciseReactionDate-exerciseStartDate)/10)/100.0;
+                    var sucessSpeed = Math.round((exerciseSuccessDate-exerciseStartDate)/10)/100.0;
                     
+                    //var recordURL = "http://localhost/alcotest/?sessionId=sessionId&originPointX=51&originPointY=51&targetPointX=52&targetPointY=52&startDate=2016-02-10T11:03:14.067Z&reactionDate=2016-02-10T11:03:15.068Z&sucessTime=2016-02-10T11:03:17.068Z&maxDistanceToTrajectory=11&minimumAssumedAlcoholInBlood=1.4&maximumAssumedAlcoholInBlood=1.6&serieId=serieId&amountOfFails=15";
+                    var recordURL = "http://localhost/alcotest/?sessionId="+sessionID+
+                        "&originPointX="+size.width / 2+
+                        "&originPointY="+size.height / 2+
+                        "&targetPointX="+targetSprite.x+
+                        "&targetPointY="+targetSprite.y+
+                        "&startDate="+exerciseStartDate.toISOString()+//"yyyy-MM-ddTHH:mm:ss.SSSZ"
+                        "&reactionDate="+exerciseReactionDate.toISOString()+
+                        "&sucessTime="+exerciseSuccessDate.toISOString()+
+                        "&maxDistanceToTrajectory="+11+
+                        "&minimumAssumedAlcoholInBlood="+1.4+
+                        "&maximumAssumedAlcoholInBlood="+1.6+
+                        "&serieId="+serieID+
+                        "&amountOfFails="+unAchievedExercises;
+                    this.callHTPGet(recordURL);
                     
                     // increment amount exercise done
                     achievedExercises ++;
@@ -331,17 +354,20 @@ var HelloWorldLayer = cc.Layer.extend({
                         // goto STATE_DISPLAY_VERDICT
                         state = STATE_DISPLAY_VERDICT;
                         
-                        helloLabel.setString("FINI !\n"+reactionTime+"s\n"+sucessTime+"s\n");
+                        helloLabel.setString("FINI ! "+reactionSpeed+"s-"+sucessSpeed+"s\n");
+                        achievedExercises = 0;
+                        
+                        now = new Date();
+                        serieID = "appSerie"+Sha1.hash(now.toISOString());
                     }else{
                         // esle (of if amount exercise done == maximum (series of exercises is finished))
                         
                         // send result
                         
                         
-                        achievedExercises = 0;
                         // goto STATE_USER_MOVE_ENDED_SUCCESS
                         state = STATE_USER_MOVE_ENDED_SUCCESS;
-                        helloLabel.setString("BRAVO !\n"+reactionTime+"s\n"+sucessTime+"s\n");
+                        helloLabel.setString("BRAVO ! "+reactionSpeed+"s-"+sucessSpeed+"s\n");
                     }
                     
                     unAchievedExercises = 0;
@@ -450,7 +476,7 @@ var HelloWorldLayer = cc.Layer.extend({
                 countDown = 3; // reset countdown for next time
 
                 // start timing exercise
-                exerciseStartDate = new Date().getTime();
+                exerciseStartDate = new Date();
 
                 var target = this.getChildByTag(TAG_SPRITE_TARGET);
                 targetPosition = Math.floor((Math.random() * 4) + 1); // random target position 1=top left, 2 = top right, 3 = bottom left, 4 = bottom right
@@ -472,7 +498,32 @@ var HelloWorldLayer = cc.Layer.extend({
         }else{
             countDown = 3;
         }
-    }
+    },
+    callHTPGet : function(theUrl){
+        helloLabel.setString("HTTP new");
+        var xmlHttp = new XMLHttpRequest();
+        helloLabel.setString("HTTP open");
+        xmlHttp.open( "GET", theUrl, false ); // false for synchronous request
+        helloLabel.setString("HTTP send");
+        xmlHttp.send( null );
+        var response = xmlHttp.responseText;
+        helloLabel.setString("HTTPr "+response.substring(JFbuffer, JFbuffer+30));
+        JFbuffer = JFbuffer+30;
+        return response;
+    }/*,
+    loadTweets : function() {
+        var request = new XMLHttpRequest();
+        request.open("GET", "http://search.twitter.com/search.json?q=phonegap", true);
+        request.onreadystatechange = function() {//Call a function when the state changes.
+           
+        };
+        console.log("asking for tweets");
+        request.send();
+
+        var response = xmlHttp.responseText;
+        helloLabel.setString("HTTPr "+response.substring(JFbuffer, JFbuffer+30));
+        JFbuffer = JFbuffer+30;
+    }*/
 });
 
 var HelloWorldScene = cc.Scene.extend({
