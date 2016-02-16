@@ -20,6 +20,7 @@ var countDown = 3;
 
 var exerciseStartDate; // when target appeared
 var exerciseReactionDate; // when user started to move
+var maxReactionTime =0;
 var exerciseSuccessDate;  // when user reached target
 
 var achievedExercises = 0; // amount of successfully achieved exercisesvar 
@@ -58,6 +59,9 @@ var HelloWorldLayer = cc.Layer.extend({
                 cc.log("Next exercise is clicked!");
                 state =STATE_WAIT_FIRST_FINGER;
                 
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                target.runAction(cc.hide());
+                
                 var colorLayer = this.getChildByTag(TAG_COLOR_LAYER);
                 colorLayer.init(cc.color(130, 130, 0, 100));
                 
@@ -86,8 +90,12 @@ var HelloWorldLayer = cc.Layer.extend({
                 sessionID = "appSession"+Sha1.hash(now.toISOString());
                 
                 achievedExercises = 0;
+                maxReactionTime = 0;
                 
                 state =STATE_WAIT_FIRST_FINGER;
+                
+                var target = this.getChildByTag(TAG_SPRITE_TARGET);
+                target.runAction(cc.hide());
                 
                 var colorLayer = this.getChildByTag(TAG_COLOR_LAYER);
                 colorLayer.init(cc.color(130, 130, 0, 100));
@@ -295,6 +303,9 @@ var HelloWorldLayer = cc.Layer.extend({
                     // record reaction time
                     exerciseReactionDate = new Date();
                     var reactionTime = Math.round((exerciseReactionDate.getTime()-exerciseStartDate.getTime())/10)/100.0;
+                    if(maxReactionTime< reactionTime){
+                        maxReactionTime = reactionTime;
+                    }
                     helloLabel.setString("REACTION TIME \n"+reactionTime);
                     // goto STATE_USER_MOVE_STARTED
                     state = STATE_USER_MOVE_STARTED;
@@ -322,15 +333,24 @@ var HelloWorldLayer = cc.Layer.extend({
                     var reactionSpeed = Math.round((exerciseReactionDate-exerciseStartDate)/10)/100.0;
                     var sucessSpeed = Math.round((exerciseSuccessDate-exerciseStartDate)/10)/100.0;
                     
-                    //var recordURL = "http://localhost/alcotest/?sessionId=sessionId&originPointX=51&originPointY=51&targetPointX=52&targetPointY=52&startDate=2016-02-10T11:03:14.067Z&reactionDate=2016-02-10T11:03:15.068Z&sucessTime=2016-02-10T11:03:17.068Z&maxDistanceToTrajectory=11&minimumAssumedAlcoholInBlood=1.4&maximumAssumedAlcoholInBlood=1.6&serieId=serieId&amountOfFails=15";
-                    var recordURL = "http://localhost/alcotest/?sessionId="+sessionID+
+                    //var recordURL = "http://iweb.inceptive.se:8282/alcotest/?sessionId=sessionId&originPointX=51&originPointY=51&targetPointX=52&targetPointY=52&startDate=2016-02-10T11:03:14.067Z&reactionDate=2016-02-10T11:03:15.068Z&sucessTime=2016-02-10T11:03:17.068Z&maxDistanceToTrajectory=11&minimumAssumedAlcoholInBlood=1.4&maximumAssumedAlcoholInBlood=1.6&serieId=serieId&amountOfFails=15";
+                    var exerciseStartDateAsString = exerciseStartDate.toISOString();
+                    var exerciseReactionDateAsString = exerciseReactionDate.toISOString();
+                    var exerciseSuccessDateAsString = exerciseSuccessDate.toISOString();
+                    
+                    var exerciseStartDateAsStringWithoutZ = exerciseStartDateAsString.substring(0,exerciseStartDateAsString.length-1);
+                    var exerciseReactionDateAsStringWithoutZ = exerciseReactionDateAsString.substring(0,exerciseReactionDateAsString.length-1);
+                    var exerciseSuccessDateAsStringWithoutZ = exerciseSuccessDateAsString.substring(0,exerciseSuccessDateAsString.length-1);
+                    
+                    
+                    var recordURL = "http://iweb.inceptive.se:8282/alcotest/?sessionId="+sessionID+
                         "&originPointX="+size.width / 2+
                         "&originPointY="+size.height / 2+
                         "&targetPointX="+targetSprite.x+
                         "&targetPointY="+targetSprite.y+
-                        "&startDate="+exerciseStartDate.toISOString()+//"yyyy-MM-ddTHH:mm:ss.SSSZ"
-                        "&reactionDate="+exerciseReactionDate.toISOString()+
-                        "&sucessTime="+exerciseSuccessDate.toISOString()+
+                        "&startDate="+exerciseStartDateAsStringWithoutZ+//"yyyy-MM-ddTHH:mm:ss.SSSZ"
+                        "&reactionDate="+exerciseReactionDateAsStringWithoutZ+
+                        "&sucessTime="+exerciseSuccessDateAsStringWithoutZ+
                         "&maxDistanceToTrajectory="+11+
                         "&minimumAssumedAlcoholInBlood="+1.4+
                         "&maximumAssumedAlcoholInBlood="+1.6+
@@ -349,13 +369,19 @@ var HelloWorldLayer = cc.Layer.extend({
                         // change background according to verdict
                         
                         var colorLayer = this.getChildByTag(TAG_COLOR_LAYER);
-                        colorLayer.init(cc.color(0, 130, 130, 100));
+                        if(maxReactionTime < 1.0){
+                            colorLayer.init(cc.color(0, 130, 130, 100));
+                            helloLabel.setString("SUCCESS ! "+reactionSpeed+"s-"+sucessSpeed+"s\n");
+                        }else{
+                            colorLayer.init(cc.color(200, 0, 0, 100));
+                            helloLabel.setString("BE CAREFUL ! "+reactionSpeed+"s-"+sucessSpeed+"s\n");
+                        }
                         
                         // goto STATE_DISPLAY_VERDICT
                         state = STATE_DISPLAY_VERDICT;
                         
-                        helloLabel.setString("FINI ! "+reactionSpeed+"s-"+sucessSpeed+"s\n");
                         achievedExercises = 0;
+                        maxReactionTime = 0;
                         
                         now = new Date();
                         serieID = "appSerie"+Sha1.hash(now.toISOString());
